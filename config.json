@@ -1,18 +1,23 @@
 {
-  "_note": "Thresholds and weights are UNCALIBRATED defaults. Tune them with `python -m mf eval` on real, labelled Kerala marksheets before relying on any band.",
+  "_note": "Thresholds and weights are UNCALIBRATED defaults. Run `python -m aicheck calibrate --real DIR --ai DIR` on your own labelled files before trusting any percentage.",
   "thresholds": {
     "review": 0.35,
     "high": 0.7
   },
-  "detectors": [
-    "classical",
-    "community_forensics",
-    "sdxl_detector",
-    "trufor",
-    "seed"
-  ],
+  "detectors": {
+    "fast": [
+      "classical",
+      "community_forensics",
+      "sdxl_detector"
+    ],
+    "deep": [
+      "trufor",
+      "seed"
+    ]
+  },
+  "uncalibrated_ml_discount": 0.7,
   "detector_weights": {
-    "classical": 0.5,
+    "classical": 0.4,
     "community_forensics": 1.0,
     "sdxl_detector": 0.6,
     "trufor": 1.0,
@@ -71,13 +76,5 @@
     "max_side": 1024,
     "patch_fake_threshold": 0.5,
     "_note": "Per SEED's main.py: model takes raw 0-255 RGB (it normalises internally), 512x512 tiles padded with white, score = softmax(image_logits)[:,1] per tile; we take the max over tiles. max_side downsizes large pages (CPU speed) -> trade-off, raise it for fidelity. The backbone facebook/dinov3-vitl16 is gated on HF, so it is built from a hand-written ViT-L/16 config and the full weights come from the SEED checkpoint."
-  },
-  "marksheet": {
-    "subject_line": "^\\s*(?P<subject>[A-Za-z][A-Za-z .&()-]{2,40}?)\\s+(?P<max>\\d{2,3})\\s+(?P<obt>\\d{1,3})\\s*$",
-    "grand_total": "(?i)grand\\s+total\\D{0,80}?(?P<max>\\d{3,4})\\D{1,80}?(?P<obt>\\d{2,4})",
-    "percentage": "(?i)percentage\\D{0,80}?(?P<pct>\\d{1,3}(?:\\.\\d+)?)",
-    "name": "(?i)name\\s+of\\s+candidate\\s*[:\\-]?\\s*(?P<v>[A-Za-z .]+)",
-    "roll": "(?i)roll\\s*no\\.?\\s*[:\\-]?\\s*(?P<v>\\d{4,10})",
-    "dob": "(?i)date\\s+of\\s+birth\\s*[:\\-]?\\s*(?P<v>\\d{1,2}[-/.]\\d{1,2}[-/.]\\d{4})"
   }
 }

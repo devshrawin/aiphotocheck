@@ -1,70 +1,83 @@
-# Marksheet forensics: evaluation harness
+# aicheck: was this document, picture or attachment generated or altered with AI?
 
-Compares ways of spotting tampered or AI-edited marksheets on the same files, so you choose detectors
-with evidence instead of vendor claims. Built for the Unified Registry attachment-verification idea.
+Give it an image, PDF or Office file (docx, pptx, xlsx). It returns an AI-likelihood score, a LOW / REVIEW / HIGH band,
+plain-language reasons, and heat maps for a human reviewer. Built for the Kerala Unified Registry scheme-scrutiny use case,
+but nothing in it is specific to one document type.
 
-## Quick start (macOS)
+It is decision support. A band routes a file to a human; it never rejects anyone.
+
+## Setup (macOS)
 
 ```bash
-./setup.sh                 # brew deps, venv, Python packages, ML packages, HF weights, TruFor clone
+./setup.sh                    # brew poppler, venv, Python packages, ML packages, Hugging Face weights, TruFor clone
 source .venv/bin/activate
-python -m mf doctor        # shows which detectors are ready and why others are not
-./run_eval.sh              # generates synthetic samples, evaluates, writes results/report.md
+python -m aicheck doctor      # shows which detectors are ready and why others are not
 ```
 
-`WITH_ML=0 ./setup.sh` installs only the rules layer + classical baseline (no torch).
+`WITH_ML=0 ./setup.sh` installs only the provenance checks and the classical detector (no torch).
 
-Other commands:
+## Use it
+
+Check one file, several files, or whole folders:
 
 ```bash
-python -m mf make-samples --out data --n 12
-python -m mf scan some_marksheet.pdf --expect '{"name":"A B","roll":"123456","dob":"01-02-2007"}'
-python -m mf eval --data /path/to/labelled_folder --detectors classical,community_forensics
+python -m aicheck scan photo.jpg
+python -m aicheck scan application.pdf attachments/ --out results
+python -m aicheck scan photo.jpg --json          # machine-readable output for another system
+python -m aicheck scan photo.jpg --deep          # also run TruFor and SEED: slow (minutes per image on CPU)
 ```
 
-## What is in it
+Example output:
+
+```
+photo.png
+  AI likelihood: 97.8% (uncalibrated)   band: HIGH   type: png
+   - PNG text chunk contains generation parameters (prompt/sampler/seed), typical of Stable Diffusion / ComfyUI output.
+   heatmap: results/work/photo_classical_heatmap.png
+```
+
+Each scan also saves a JSON report in `results/reports/`.
+
+## Make the percentage mean something (calibrate)
+
+Out of the box the percentage is an **uncalibrated heuristic** and says so. To turn it into a measured number, give it
+two folders of files you know the answer for:
+
+```bash
+python -m aicheck calibrate --real path/to/real_files --ai path/to/ai_files
+cp results_calibration/calibration.json calibration.json     # scans pick this up automatically
+```
+
+This prints AUC and the catch rate at 1% and 5% false-alarm rates for each detector, and fits a logistic regression so
+the percentage matches observed frequencies. Use at least 50 files per folder, ideally 200+, from the same sources your
+officers will actually see (phone photos, scans, screenshots, WhatsApp-compressed images, recompressed AI images).
+
+## What it checks
 
 | Layer | File | What it does |
 |---|---|---|
-| Rules | `mf/rules.py` | File type vs extension, PDF revisions, producer/editor tools, modified-after-created, font-subset mixing, extra images on a page, EXIF editor tags, AI/provenance markers (C2PA etc.) |
-| Content | `mf/marksheet.py` | OCR (two passes) or PDF text layer, subject totals and percentage arithmetic, optional registry cross-check (name, roll no., DOB) |
-| Detectors | `mf/detectors/` | `classical` (ELA + noise residual, always on), `community_forensics` and `sdxl_detector` (Hugging Face whole-image classifiers), `trufor` (localisation, external repo), `seed` (document tamper localisation) |
-| Combine | `mf/pipeline.py` | Noisy-OR of rule findings + weighted detector score gives a band: low / review / high |
-| Evaluate | `mf/evaluate.py` | AUC, TPR at 1% and 5% false-positive rate, per forgery type, per capture type, ROC chart |
+| Files | `aicheck/files.py` | Identifies the file type from its bytes, pulls images out of PDFs and Office files |
+| Provenance | `aicheck/provenance.py` | C2PA / IPTC "trained algorithmic media" tags, generator strings, Stable Diffusion / ComfyUI prompt chunks in PNGs, EXIF editor tags, PDF revisions, editor in PDF producer, font mixing, extension mismatch. Precise when present, silent when metadata is stripped |
+| Detectors | `aicheck/detectors/` | `classical` (ELA + noise residual), `community_forensics` and `sdxl_detector` (AI-image classifiers), `trufor` and `seed` (edit localisation, `--deep` only) |
+| Scoring | `aicheck/pipeline.py` | Combines provenance evidence and detector scores (noisy-OR) into the percentage and band |
+| Calibration | `aicheck/calibrate.py` | Measures detectors on labelled folders and fits the calibration |
 
-## Product rules baked in
+Provenance findings are split into `ai` evidence (counts toward the percentage), `edit` evidence (non-AI manipulation,
+listed separately and can raise a LOW file to REVIEW) and `info` (context only).
 
-- The **citizen** only gets `citizen_message`: no score, no "AI", no accusation. They are told to upload a clearer copy or fetch the document from the issuer.
-- The **officer** gets `officer_view`: band, plain-language reasons, per-detector scores, heat maps.
-- A band only routes a case to human review. It never rejects anyone.
-- Scores are **not calibrated probabilities**. Never show "83% altered" to anyone.
-
-## Dataset layout for your own evaluation
-
-```
-data/labels.csv      path,label,edit_type,carrier,sample_id    (label = genuine | forged)
-data/registry.json   {"<sample_id>": {"name": "...", "roll": "...", "dob": "dd-mm-yyyy"}}   (optional)
-data/genuine/...     real marksheets: scans, phone photos, PDFs
-data/forged/...      tampered copies, including REAL AI-edited ones (edit_type = ai_inpainted)
-```
-
-Use real marksheets only with proper authority and data-protection approval, and keep them on approved infrastructure.
-
-## Honest status of each part
+## Honest status
 
 | Part | Status |
 |---|---|
-| Rules, OCR/arithmetic checks, classical detector, synthetic generator, evaluator, CLI | Built and tested (10 unit tests, end-to-end run on 36 synthetic files) |
-| `community_forensics`, `sdxl_detector` adapters | Written, **not run**: the build sandbox had no PyTorch/Hugging Face access. Model IDs come from the hub; if one fails to load, `doctor` says why. |
-| `trufor` adapter | Written, **not run**. The command template in `config.json` is a best guess; check it against the repo's README. Needs weights downloaded manually. |
-| `seed` adapter | Written, **not run**. Needs its GitHub repo cloned into `third_party/SEED`; input preprocessing is an assumption to verify. |
+| Provenance checks, file handling, scoring, CLI | Built, 10 unit tests pass |
+| `classical`, `community_forensics`, `sdxl_detector` | Run end to end. On 712 real receipts (SROIE) none scored above 0.5, so no false alarms there |
+| Detector **sensitivity** | **Not measured.** No AI-generated documents have been tested yet. `community_forensics` scored every real receipt at about 0.40 and `sdxl_detector` about 0.00, so they may not be sensitive to documents at all. Do not rely on them until `calibrate` shows otherwise |
+| `trufor`, `seed` | Run on one image each (TruFor ~110 s, SEED ~25 s on CPU). Not evaluated at scale |
+| Calibration | None shipped. Percentages are marked uncalibrated until you run `calibrate` |
 
-## What the synthetic run showed (36 files)
-
-- Rules caught inconsistent edits, copy-move, name swaps and PDF text edits; no genuine file was flagged.
-- Edits that keep the arithmetic consistent and then go through a scan/phone capture (`edit_consistent`, `inpaint_sim`) were **invisible** to the rules and the classical detector. That is the gap the ML detectors have to close, and it is the number to watch once they run.
-- The classical detector scored at chance (AUC 0.47) on re-captured images, so it drags the combined score down at its current weight. Tune `detector_weights` (or fit a small logistic regression) on real data.
-- `inpaint_sim` is a **proxy**, not a real generative-AI edit. Add real AI-edited samples before trusting any conclusion.
+AI-edited documents (inpainted fields) are the hardest case. Published benchmarks show current detectors, including TruFor,
+perform modestly on them. Expect the strongest signal from provenance metadata, which survives only when the file has not
+been screenshotted or re-saved by a messaging app.
 
 ## Licences to clear before production
 
@@ -80,5 +93,11 @@ Weights are downloaded once (setup) and inference runs locally.
 
 ## Not yet covered
 
-Issuer verification (DigiLocker / board QR / signature checks), per-board OCR templates, Malayalam OCR (`tesseract-lang`),
-a learned score combiner, and the officer review UI.
+Issuer verification (DigiLocker, QR, digital signatures), video and audio, HEIC photos, a learned score combiner trained on
+real data, and the officer review UI.
+
+## Tests
+
+```bash
+python -m pytest tests -q
+```

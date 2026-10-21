@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # One-time setup for macOS (Apple Silicon or Intel).
 #   ./setup.sh            core + ML detectors
-#   WITH_ML=0 ./setup.sh  core only (rules layer + classical detector)
+#   WITH_ML=0 ./setup.sh  core only (provenance checks + classical detector)
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "==> System tools (tesseract, poppler)"
+echo "==> System tools (poppler, for PDF pages)"
 if command -v brew >/dev/null 2>&1; then
-  for pkg in tesseract poppler; do
+  for pkg in poppler; do
     brew list "$pkg" >/dev/null 2>&1 || brew install "$pkg"
   done
 else
-  echo "Homebrew not found. Install it from https://brew.sh, then re-run, or install tesseract and poppler yourself."
+  echo "Homebrew not found. Install it from https://brew.sh, then re-run, or install poppler yourself."
   exit 1
 fi
 
@@ -62,4 +62,4 @@ MSG
 fi
 
 echo
-echo "==> Done. Try:  source .venv/bin/activate && python -m mf doctor"
+echo "==> Done. Try:  source .venv/bin/activate && python -m aicheck doctor"

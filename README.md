@@ -16,7 +16,17 @@ python -m aicheck doctor      # shows which detectors are ready and why others a
 
 `WITH_ML=0 ./setup.sh` installs only the provenance checks and the classical detector (no torch).
 
-## Use it
+## Use it: web interface
+
+```bash
+python -m aicheck serve        # then open http://127.0.0.1:8765
+```
+
+Drag files into the page. Each file gets a card with the AI-likelihood bar, the band, the reasons, heat maps and a JSON
+download. Tick "Deep scan" to add TruFor and SEED (slow). The server listens on `127.0.0.1` only, rejects requests from other
+sites, handles one scan at a time, and deletes each uploaded file as soon as it has been scanned. It needs no extra packages.
+
+## Use it: command line
 
 Check one file, several files, or whole folders:
 
@@ -59,6 +69,7 @@ officers will actually see (phone photos, scans, screenshots, WhatsApp-compresse
 | Files | `aicheck/files.py` | Identifies the file type from its bytes, pulls images out of PDFs and Office files |
 | Provenance | `aicheck/provenance.py` | C2PA / IPTC "trained algorithmic media" tags, generator strings, Stable Diffusion / ComfyUI prompt chunks in PNGs, EXIF editor tags, PDF revisions, editor in PDF producer, font mixing, extension mismatch. Precise when present, silent when metadata is stripped |
 | Detectors | `aicheck/detectors/` | `classical` (ELA + noise residual), `community_forensics` and `sdxl_detector` (AI-image classifiers), `trufor` and `seed` (edit localisation, `--deep` only) |
+| Web UI | `aicheck/server.py`, `aicheck/web/index.html` | Local-only upload page and JSON API (`/api/scan`, `/api/status`) |
 | Scoring | `aicheck/pipeline.py` | Combines provenance evidence and detector scores (noisy-OR) into the percentage and band |
 | Calibration | `aicheck/calibrate.py` | Measures detectors on labelled folders and fits the calibration |
 

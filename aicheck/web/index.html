@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Check</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1b1f27; --muted: #5d6675; --line: #dde1e7; --accent: #2a5bd7;
+    --low: #1a7f4b; --low-bg: #e3f4ea; --review: #9a5b00; --review-bg: #fdf0d9; --high: #b3261e; --high-bg: #fbe4e1;
+    --track: #e7eaf0; --shadow: 0 1px 2px rgba(20,25,35,.06), 0 4px 14px rgba(20,25,35,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101319; --card: #181c24; --ink: #e8ebf0; --muted: #98a2b3; --line: #2a303b; --accent: #7aa2ff;
+      --low: #55c58a; --low-bg: #16301f; --review: #f0b04a; --review-bg: #33260f; --high: #ff7b72; --high-bg: #3a1916;
+      --track: #262c37; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101319; --card: #181c24; --ink: #e8ebf0; --muted: #98a2b3; --line: #2a303b; --accent: #7aa2ff;
+    --low: #55c58a; --low-bg: #16301f; --review: #f0b04a; --review-bg: #33260f; --high: #ff7b72; --high-bg: #3a1916;
+    --track: #262c37; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .banner { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 13.5px; color: var(--muted); }
+  .banner.warn { background: var(--review-bg); border-color: transparent; color: var(--review); }
+  .drop { border: 2px dashed var(--line); border-radius: 14px; background: var(--card); padding: 34px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); }
+  .drop strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .drop span { color: var(--muted); font-size: 13.5px; }
+  .opts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 12px 2px 22px; font-size: 13.5px; color: var(--muted); }
+  .opts label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  button { font: inherit; }
+  .btn { background: transparent; color: var(--accent); border: 1px solid var(--line); border-radius: 8px; padding: 5px 11px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .top { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .name { font-weight: 600; word-break: break-all; }
+  .meta { color: var(--muted); font-size: 12.5px; }
+  .chip { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+  .chip.low { background: var(--low-bg); color: var(--low); }
+  .chip.review { background: var(--review-bg); color: var(--review); }
+  .chip.high { background: var(--high-bg); color: var(--high); }
+  .body { display: grid; grid-template-columns: 200px 1fr; gap: 18px; margin-top: 14px; }
+  @media (max-width: 640px) { .body { grid-template-columns: 1fr; } }
+  .preview { width: 100%; max-height: 260px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .nopreview { display: grid; place-items: center; height: 120px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
+  .pct { font-size: 34px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .pct small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+  .bar { position: relative; height: 10px; border-radius: 999px; background: var(--track); margin: 10px 0 4px; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+  .bar i.low { background: var(--low); } .bar i.review { background: var(--review); } .bar i.high { background: var(--high); }
+  .bar b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--muted); opacity: .45; }
+  .scale { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+  h3 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; font-weight: 600; }
+  ul { margin: 0; padding-left: 18px; } li { margin: 3px 0; }
+  .action { margin-top: 12px; padding: 9px 12px; background: var(--bg); border-radius: 8px; font-size: 13.5px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  .heat { display: flex; gap: 10px; flex-wrap: wrap; }
+  .heat figure { margin: 0; width: 150px; } .heat img { width: 100%; border-radius: 6px; border: 1px solid var(--line); cursor: zoom-in; }
+  .heat figcaption { font-size: 11.5px; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: s .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .err { color: var(--high); }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 28px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>AI Check</h1>
+  <p class="sub">Was this document, picture or attachment generated or altered with AI?</p>
+
+  <div id="status" class="banner">Checking detectors…</div>
+
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose files to check">
+    <strong>Drop files here, or click to choose</strong>
+    <span>Images, PDFs, Word / PowerPoint / Excel files · up to 50 MB each</span>
+    <input id="file" type="file" multiple hidden accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,.bmp,.gif,.pdf,.docx,.pptx,.xlsx">
+  </div>
+  <div class="opts">
+    <label><input type="checkbox" id="deep"> Deep scan (TruFor + SEED): much slower, can take several minutes per image</label>
+    <button class="btn" id="clear" type="button">Clear results</button>
+  </div>
+
+  <div id="results"></div>
+  <footer>Decision support only. A result is a reason to look closer, never proof, and never grounds to reject on its own.<br>Everything runs on this computer; uploaded files are deleted right after each scan.</footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const BAND = { low: "Low signal", review: "Needs review", high: "Strong signal" };
+const PREVIEWABLE = /^image\/(jpeg|png|webp|gif|bmp)$/;
+let TH = { review: 35, high: 70 };
+
+fetch("/api/status").then(r => r.json()).then(s => {
+  TH = s.thresholds;
+  const ready = s.detectors.filter(d => d.ready), bad = s.detectors.filter(d => !d.ready);
+  const b = $("status");
+  const fast = ready.filter(d => d.tier === "fast").map(d => d.name).join(", ") || "none";
+  b.textContent = "Ready · fast detectors: " + fast + (bad.length ? " · not ready: " + bad.map(d => d.name).join(", ") : "") + ". ";
+  if (!s.calibrated) {
+    b.classList.add("warn");
+    b.append(el("b", null, "Percentages are uncalibrated heuristics, not measured probabilities."));
+  } else {
+    b.append("Calibrated on " + s.calibration.n_real + " real and " + s.calibration.n_ai + " AI files.");
+  }
+}).catch(() => { $("status").textContent = "Cannot reach the local server."; });
+
+const drop = $("drop"), input = $("file");
+drop.onclick = () => input.click();
+drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } };
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); enqueue([...e.dataTransfer.files]); };
+input.onchange = () => { enqueue([...input.files]); input.value = ""; };
+$("clear").onclick = () => { $("results").replaceChildren(); };
+
+const queue = []; let busy = false;
+function enqueue(files) {
+  for (const f of files) {
+    const card = el("div", "card");
+    const head = el("div", "top");
+    head.append(el("div", "name", f.name));
+    card.append(head);
+    card.append(el("div", "meta", "Waiting…"));
+    $("results").prepend(card);
+    queue.push({ f, card, deep: $("deep").checked });
+  }
+  pump();
+}
+async function pump() {
+  if (busy) return; busy = true;
+  while (queue.length) {
+    const { f, card, deep } = queue.shift();
+    card.lastChild.replaceChildren(el("span", "spin"), "Scanning" + (deep ? " (deep scan, this takes a while)" : "") + "…");
+    try {
+      const r = await fetch("/api/scan?deep=" + (deep ? 1 : 0) + "&name=" + encodeURIComponent(f.name), { method: "POST", body: f });
+      const rep = await r.json();
+      if (!r.ok) throw new Error(rep.error || r.statusText);
+      render(card, rep, f);
+    } catch (e) {
+      card.lastChild.replaceChildren(el("span", "err", "Could not scan this file: " + e.message));
+    }
+  }
+  busy = false;
+}
+
+function section(parent, title, items) {
+  if (!items.length) return;
+  parent.append(el("h3", null, title));
+  const ul = el("ul"); items.forEach(t => ul.append(el("li", null, t))); parent.append(ul);
+}
+
+function render(card, rep, file) {
+  card.replaceChildren();
+  const pct = rep.ai_likelihood_pct;
+  const top = el("div", "top");
+  const left = el("div"); left.append(el("div", "name", rep.file));
+  left.append(el("div", "meta", rep.file_type.toUpperCase() + " · " + rep.images_analyzed + " image" + (rep.images_analyzed === 1 ? "" : "s") + " analysed" + (rep.deep ? " · deep scan" : "")));
+  top.append(left, el("span", "chip " + rep.band, BAND[rep.band]));
+  card.append(top);
+
+  const body = el("div", "body");
+  const side = el("div");
+  if (PREVIEWABLE.test(file.type)) { const img = el("img", "preview"); img.alt = "Preview of " + rep.file; img.src = URL.createObjectURL(file); side.append(img); }
+  else side.append(el("div", "nopreview", "No preview"));
+  const main = el("div");
+  const p = el("div", "pct", pct.toFixed(1) + "%"); p.append(el("small", null, "AI likelihood" + (rep.calibrated ? "" : " · uncalibrated")));
+  const bar = el("div", "bar"); const fill = el("i", rep.band); fill.style.width = Math.max(pct, 1) + "%";
+  bar.append(fill);
+  for (const t of [TH.review, TH.high]) { const tick = el("b"); tick.style.left = t + "%"; bar.append(tick); }
+  const scale = el("div", "scale"); scale.append(el("span", null, "0%"), el("span", null, "review " + TH.review + "%"), el("span", null, "strong " + TH.high + "%"), el("span", null, "100%"));
+  main.append(p, bar, scale);
+  main.append(el("div", "action", rep.suggested_action));
+  section(main, "Why", rep.reasons.length ? rep.reasons : ["No AI signals found in the file's metadata or by the detectors."]);
+  section(main, "Other signs of alteration (not necessarily AI)", rep.other_alteration_signals);
+
+  if (rep.heatmaps.length) {
+    main.append(el("h3", null, "Heat maps (brighter = more inconsistent with the rest of the image)"));
+    const row = el("div", "heat");
+    rep.heatmaps.forEach(h => {
+      const fig = el("figure"); const a = el("a"); a.href = h; a.target = "_blank"; a.rel = "noopener";
+      const im = el("img"); im.src = h; im.alt = "Heat map"; a.append(im);
+      fig.append(a, el("figcaption", null, (h.match(/_(classical|trufor|seed)_/) || [0, "detector"])[1]));
+      row.append(fig);
+    });
+    main.append(row);
+  }
+
+  const det = el("details"); det.append(el("summary", null, "Detector scores and technical details"));
+  const tbl = el("table"); const hd = el("tr"); ["Detector", "Score", "Note"].forEach(t => hd.append(el("th", null, t))); tbl.append(hd);
+  for (const [name, d] of Object.entries(rep.detectors)) {
+    const tr = el("tr");
+    tr.append(el("td", null, name), el("td", null, d.score != null ? d.score.toFixed(3) : "—"),
+      el("td", null, d.available === false ? "not available: " + d.note : (d.error || d.note || "")));
+    tbl.append(tr);
+  }
+  det.append(tbl);
+  if (rep.context.length) { const c = el("div"); section(c, "Context", rep.context); det.append(c); }
+  if (rep.caveat) det.append(el("p", "meta", rep.caveat));
+  const dl = el("button", "btn", "Download report (JSON)"); dl.style.marginTop = "10px";
+  dl.onclick = () => { const a = el("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(rep, null, 2)], { type: "application/json" })); a.download = rep.file.replace(/\.[^.]+$/, "") + "_aicheck.json"; a.click(); };
+  det.append(dl);
+  main.append(det);
+  body.append(side, main); card.append(body);
+}
+</script>
+</body>
+</html>

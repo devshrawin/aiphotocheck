@@ -80,6 +80,13 @@ def cmd_calibrate(args):
     print(f"To use it for scans: cp {src} {DEFAULT_CALIBRATION}")
 
 
+def cmd_serve(args):
+    from .server import serve
+
+    calib = Path(args.calibration) if args.calibration else DEFAULT_CALIBRATION
+    serve(load_cfg(args.config), ROOT, calib, args.port)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="aicheck", description="Check whether a document, picture or attachment was generated or altered with AI")
     ap.add_argument("--config", default=None)
@@ -99,6 +106,10 @@ def main(argv=None):
     p.add_argument("--deep", action="store_true"); p.add_argument("--detectors", default=None)
     p.add_argument("--out", default="results_calibration"); p.add_argument("--limit", type=int, default=None)
     p.set_defaults(fn=cmd_calibrate)
+
+    p = sub.add_parser("serve", help="open the web interface (local only)")
+    p.add_argument("--port", type=int, default=8765); p.add_argument("--calibration", default=None)
+    p.set_defaults(fn=cmd_serve)
 
     args = ap.parse_args(argv)
     args.fn(args)

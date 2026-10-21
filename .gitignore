@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+third_party/
+results/
+results_*/
+results_sample.log
+data_ai/
+.DS_Store

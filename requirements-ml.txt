@@ -1,0 +1,7 @@
+torch
+torchvision
+transformers
+timm
+safetensors
+huggingface_hub
+onnxruntime

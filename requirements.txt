@@ -1,0 +1,12 @@
+numpy
+pillow
+opencv-python-headless
+pypdf
+pikepdf
+scikit-learn
+scipy
+pandas
+matplotlib
+reportlab
+pytesseract
+tqdm
